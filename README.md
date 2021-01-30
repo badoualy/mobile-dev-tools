@@ -86,7 +86,7 @@ The `file` attribute can be a relative path, eg: `"file": "./screenshots/step1.p
 
 ### Usage
 
-`./gradlew run --args="<path_to_root>"`
+`./gradlew runAnnotator --args="<path_to_root>"`
 
 ### Result
 
