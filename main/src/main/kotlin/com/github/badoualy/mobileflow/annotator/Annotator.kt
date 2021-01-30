@@ -44,7 +44,8 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
     val flow = moshi.adapter(Flow::class.java).fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
     println("Starting flow ${flow.flowName}")
     flow.steps.forEach {
-        val annotatedFile = File(annotatedDir, "annotated_${jsonFile.name}")
+        val screenshotFile = File(flowDir, it.file)
+        val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
         generateAnnotatedScreenshot(flowDir, it)
             .output(PngWriter.MaxCompression, annotatedFile)
         println("Annotated ${it.file}")
@@ -53,9 +54,9 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
     println("\n")
 }
 
-private fun generateAnnotatedScreenshot(dir: File, pageContent: PageContent): ImmutableImage {
+private fun generateAnnotatedScreenshot(file: File, pageContent: PageContent): ImmutableImage {
     var headerSize: Int
-    return ImmutableImage.loader().fromFile(File(dir, pageContent.file))
+    return ImmutableImage.loader().fromFile(file)
         .run {
             // Get header size and resize to add space at top
             headerSize = awt().createGraphics().run {
