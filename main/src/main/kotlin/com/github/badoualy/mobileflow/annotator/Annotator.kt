@@ -44,7 +44,7 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
     val flow = moshi.adapter(Flow::class.java).fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
     println("Starting flow ${flow.flowName}")
     flow.steps.forEach {
-        val annotatedFile = File(annotatedDir, "annotated_${it.file}")
+        val annotatedFile = File(annotatedDir, "annotated_${jsonFile.name}")
         generateAnnotatedScreenshot(flowDir, it)
             .output(PngWriter.MaxCompression, annotatedFile)
         println("Annotated ${it.file}")
