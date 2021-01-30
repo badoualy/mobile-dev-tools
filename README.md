@@ -1,3 +1,5 @@
+[![Release](https://jitpack.io/v/badoualy/mobile-flow-doc.svg)](https://jitpack.io/#badoualy/mobile-flow-doc)
+
 ### Mobile Flow doc
 
 Project to annotate screenshots taken from ui test with elements of the page.
@@ -9,6 +11,28 @@ The objectives are:
   devs)
 * Add misc info from the code (fragment name, controller name, deeplink, ...) that can help new developers easily find a
   screen in the code
+
+### Setup
+
+Available on jitpack.
+In the root build.gradle:
+
+```
+	allprojects {
+		repositories {
+			...
+			maven { url 'https://jitpack.io' }
+		}
+	}
+```
+
+In your module build.gradle
+
+```
+dependencies {
+    implementation 'com.github.badoualy:mobile-flow-doc:1.0.0'
+}
+```
 
 ### Requirements
 
