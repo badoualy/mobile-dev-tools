@@ -118,3 +118,7 @@ The result will be exported in a `annotated` directory:
   │       └── annotated_screenshotN.png
   └── ...
 ```
+
+| Original                                                                                        | Annotated                                                                                                |
+|---------------------------------------------------------------------------------------------	|-------------------------------------------------------------------------------------------------------	|
+| <img src="https://github.com/badoualy/mobile-flow-doc/blob/main/ART/step1.png" width="300">    | <img src="https://github.com/badoualy/mobile-flow-doc/blob/main/ART/annotated_step1.png" width="300">    |
