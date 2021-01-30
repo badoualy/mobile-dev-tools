@@ -21,7 +21,7 @@ fun main(args: Array<String>) {
         File("./main/src/main/resources/")
     } else {
         File(args.first()).also {
-            check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.isAbsolute}" }
+            check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.absolutePath}" }
         }
     }
 
