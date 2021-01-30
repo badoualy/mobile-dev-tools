@@ -26,23 +26,29 @@ fun Graphics2D.drawElement(element: PageElement) {
     drawString(element.id, textRect.x + ELEMENT_RECTANGLE_PADDING, textRect.y + textRect.height - fontMetrics.descent)
 }
 
-fun Graphics2D.drawPageHeaders(pageContent: PageContent) {
+fun Graphics2D.drawPageHeaders(pageContent: PageContent, imageBounds: Rectangle) {
     font = font.deriveFont(PAGE_HEADER_TEXT_SIZE)
     color = PAGE_HEADER_TEXT_COLOR
-    drawLines(pageContent.headers)
+    drawLines(pageContent.headers, imageBounds = imageBounds)
 }
 
-fun Graphics2D.drawLines(list: List<String>, initialY: Int = 0) {
+fun Graphics2D.drawLines(list: List<String>, initialY: Int = 0, imageBounds: Rectangle) {
     list.forEachIndexed { i, text ->
-        drawStringCenteredHorizontally(text, initialY + (i + 1) * (fontMetrics.height + fontMetrics.descent))
+        drawStringCenteredHorizontally(
+            text = text,
+            y = initialY + (i + 1) * (fontMetrics.height + fontMetrics.descent),
+            imageBounds = imageBounds
+        )
     }
 }
 
-fun Graphics2D.drawStringCenteredHorizontally(text: String, y: Int) {
+fun Graphics2D.drawStringCenteredHorizontally(text: String, y: Int, imageBounds: Rectangle) {
+    // deviceConfiguration.bounds.width doesn't work in console :shrug:
+
     val width = fontMetrics.stringWidth(text)
     drawString(
         text,
-        (deviceConfiguration.bounds.width - width) / 2,
+        (imageBounds.width - width) / 2,
         y
     )
 }

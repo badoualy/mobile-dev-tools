@@ -6,6 +6,7 @@ import com.sksamuel.scrimage.nio.PngWriter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okio.Okio
+import java.awt.Rectangle
 import java.io.File
 
 private const val RESULT_DIR = "annotated"
@@ -69,9 +70,10 @@ private fun generateAnnotatedScreenshot(dir: File, pageContent: PageContent): Im
             )
         }
         .apply {
+            val bounds = Rectangle(width, height)
             awt().createGraphics().apply {
                 // Draw header
-                drawPageHeaders(pageContent)
+                drawPageHeaders(pageContent, bounds)
 
                 // Draw content
                 translate(PAGE_HEADER_PADDING_HORIZONTAL, headerSize)
