@@ -46,7 +46,7 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
     flow.steps.forEach {
         val screenshotFile = File(flowDir, it.file)
         val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
-        generateAnnotatedScreenshot(flowDir, it)
+        generateAnnotatedScreenshot(screenshotFile, it)
             .output(PngWriter.MaxCompression, annotatedFile)
         println("Annotated ${it.file}")
     }
