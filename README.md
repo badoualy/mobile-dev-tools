@@ -1,3 +1,5 @@
+[![Release](https://jitpack.io/v/badoualy/mobile-flow-doc.svg)](https://jitpack.io/#badoualy/mobile-flow-doc)
+
 ### Mobile Flow doc
 
 Project to annotate screenshots taken from ui test with elements of the page.
