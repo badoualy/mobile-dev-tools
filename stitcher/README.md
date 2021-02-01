@@ -33,18 +33,19 @@ dependencies {
 
 ### Usage
 
-`./gradlew runStitcher --args="<path_to_dir> startY endY"`
+`./gradlew runStitcher --args="<path_to_dir> startY endY threshold"`
 
 The result will be exported into `result.png`
 
 Use the following function
 
-`fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage`
+`fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE, threshold: Int = 0): ImmutableImage`
 
 Where
 
 * `startY` scrolling view top position
 * `endY` scrolling view bottom position
+* `threshold` number of successive lines that must match to consider a positive result
 
 Those values are optional and serve as optimisation to avoid checking unnecessary parts of the images. However, it is
 strongly recommended specifying them, or the algorithm might find a false positive outside the scrolling view. 

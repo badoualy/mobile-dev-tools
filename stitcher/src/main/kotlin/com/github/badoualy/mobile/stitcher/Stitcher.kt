@@ -17,11 +17,18 @@ fun main(args: Array<String>) {
     }?.toList()?.sortedBy { it.nameWithoutExtension }
     println("Stitching files ${files.orEmpty().joinToString { it.name }}")
 
-    files?.getStitchedImage(startY = args.getOrNull(1)?.toInt() ?: 0, endY = args.getOrNull(2)?.toInt() ?: 0)
-        ?.output(PngWriter.MaxCompression, resultFile)
+    files?.getStitchedImage(
+        startY = args.getOrNull(1)?.toInt() ?: 0,
+        endY = args.getOrNull(2)?.toInt() ?: 0,
+        threshold = args.getOrNull(3)?.toInt() ?: 0
+    )?.output(PngWriter.MaxCompression, resultFile)
 }
 
-fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage {
+fun List<File>.getStitchedImage(
+    startY: Int = 0,
+    endY: Int = Integer.MAX_VALUE,
+    threshold: Int = 1
+): ImmutableImage {
     val chunks = map { ImmutableImage.loader().fromFile(it) }.map { Chunk(it) }
 
     // Evaluate chunk bounds
@@ -32,7 +39,8 @@ fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE):
                 img1 = previousChunk.image,
                 img2 = chunk.image,
                 dropFirst = startY.coerceAtMost(chunk.image.height),
-                dropLast = (chunk.image.height - endY).coerceAtLeast(0)
+                dropLast = (chunk.image.height - endY).coerceAtLeast(0),
+                threshold = threshold
             )
         )
         println("Match $result")
@@ -65,8 +73,9 @@ fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE):
 private fun findFirstRowMatch(
     img1: ImmutableImage,
     img2: ImmutableImage,
-    dropFirst: Int = 0,
-    dropLast: Int = 0
+    dropFirst: Int,
+    dropLast: Int,
+    threshold: Int
 ): Pair<Int, Int>? {
     img2.rows().drop(dropFirst)
         .filter { it.distinctBy(Pixel::argb).size > 1 }
@@ -76,12 +85,22 @@ private fun findFirstRowMatch(
                 .reversed() // Start from bottom to find the match faster
                 .filter { it[0].y != img2Row[0].y } // Ignore identical row, probably not in the scrolling view's bounds
                 .firstOrNull { it.isIdentical(img2Row) }
-            if (match != null) {
+            if (match != null && areRowsIdentical(img1, img2, match[0].y, img2Row[0].y, threshold = threshold)) {
                 return match[0].y to img2Row[0].y
             }
         }
 
     return null
+}
+
+private fun areRowsIdentical(
+    img1: ImmutableImage,
+    img2: ImmutableImage,
+    startRow1: Int,
+    startRow2: Int,
+    threshold: Int
+): Boolean {
+    return (0 until threshold).all { img1.row(startRow1 + it).isIdentical(img2.row(startRow2 + it)) }
 }
 
 private fun Array<out Pixel>.isIdentical(a: Array<out Pixel>): Boolean = all { it.argb == a[it.x].argb }
