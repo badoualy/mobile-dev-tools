@@ -4,9 +4,7 @@ Stitch multiple screenshots together:
 
 Input:
 
-<img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/stitch1.png" width="300">
-<img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/stitch2.png" width="300">
-<img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/stitch3.png" width="300">
+<img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/stitch1.png" width="300"><img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/stitch2.png" width="300"><img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/stitch3.png" width="300">
 
 Result:
 
