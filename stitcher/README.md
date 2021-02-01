@@ -27,7 +27,7 @@ In your module build.gradle
 
 ```
 dependencies {
-  implementation 'com.github.badoualy:mobile-tools-dev:1.0.0'
+  implementation 'com.github.badoualy.mobile-dev-tools:stitcher:<version>'
 }
 ```
 
