@@ -4,12 +4,17 @@ plugins {
     kotlin("jvm") version "1.4.21"
 }
 
+repositories {
+    jcenter()
+}
+
 task("runAnnotator", JavaExec::class) {
     main = "com.github.badoualy.mobileflow.annotator.AnnotatorKt"
     classpath = sourceSets["main"].runtimeClasspath
 }
 
 dependencies {
+    implementation(kotlin("stdlib"))
     implementation(project(":stitcher"))
     implementation("com.squareup.moshi:moshi:1.11.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.11.0")
