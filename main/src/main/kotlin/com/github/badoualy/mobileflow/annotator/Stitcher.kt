@@ -16,13 +16,13 @@ fun main() {
     val scrollableViewBottom = 2870
     val duration = measureTimeMillis {
         listOf(file1, file2, file3)
-            .stitch(startY = scrollableViewTop, endY = scrollableViewBottom)
+            .getStitchedImage(startY = scrollableViewTop, endY = scrollableViewBottom)
             .output(PngWriter.MaxCompression, dst)
     }
     println("Stitched in $duration")
 }
 
-fun List<File>.stitch(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage {
+fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage {
     val chunks = map { ImmutableImage.loader().fromFile(it) }.map { Chunk(it) }
 
     // Evaluate chunk bounds

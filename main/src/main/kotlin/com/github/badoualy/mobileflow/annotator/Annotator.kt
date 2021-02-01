@@ -43,42 +43,48 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
 
     val flow = moshi.adapter(Flow::class.java).fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
     println("Starting flow ${flow.flowName}")
-    flow.steps.forEach {
-        val screenshotFile = File(flowDir, it.file)
-        val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
-        generateAnnotatedScreenshot(screenshotFile, it)
+    flow.steps.forEach { pageContent ->
+        println("Doing ${pageContent.files.joinToString()}")
+        check(pageContent.files.isNotEmpty()) { "Missing screenshot files" }
+        val screenshotFiles = pageContent.files.map { File(flowDir, it) }
+        val screenshotImage = if (screenshotFiles.size > 1) {
+            // TODO: get scrollable view info
+            println("Stitching files")
+            screenshotFiles.getStitchedImage()
+        } else {
+            ImmutableImage.loader().fromFile(screenshotFiles.first())
+        }
+
+        val annotatedFile = File(annotatedDir, "annotated_${screenshotFiles.first().name}")
+        screenshotImage.annotate(pageContent)
             .output(PngWriter.MaxCompression, annotatedFile)
-        println("Annotated ${it.file}")
     }
 
     println("\n")
 }
 
-private fun generateAnnotatedScreenshot(file: File, pageContent: PageContent): ImmutableImage {
-    var headerSize: Int
-    return ImmutableImage.loader().fromFile(file)
-        .run {
-            // Get header size and resize to add space at top
-            headerSize = awt().createGraphics().run {
-                font = font.deriveFont(PAGE_HEADER_TEXT_SIZE)
-                (fontMetrics.height + fontMetrics.descent) * pageContent.headers.size
-            } + PAGE_HEADER_PADDING_VERTICAL
+private fun ImmutableImage.annotate(pageContent: PageContent): ImmutableImage {
+    // Get header size and resize to add space at top
+    val headerSize = awt().createGraphics().run {
+        font = font.deriveFont(PAGE_HEADER_TEXT_SIZE)
+        val value = (fontMetrics.height + fontMetrics.descent) * pageContent.headers.size + PAGE_HEADER_PADDING_VERTICAL
+        dispose()
+        value
+    }
 
-            resizeTo(
-                width + PAGE_HEADER_PADDING_HORIZONTAL * 2,
-                height + headerSize,
-                Position.BottomCenter
-            )
-        }
-        .apply {
-            val bounds = Rectangle(width, height)
-            awt().createGraphics().apply {
-                // Draw header
-                drawPageHeaders(pageContent, bounds)
+    return resizeTo(
+        width + PAGE_HEADER_PADDING_HORIZONTAL * 2,
+        height + headerSize,
+        Position.BottomCenter
+    ).apply {
+        val bounds = Rectangle(width, height)
+        awt().createGraphics().apply {
+            // Draw header
+            drawPageHeaders(pageContent, bounds)
 
-                // Draw content
-                translate(PAGE_HEADER_PADDING_HORIZONTAL, headerSize)
-                pageContent.elements.forEach(::drawElement)
-            }
-        }
+            // Draw content
+            translate(PAGE_HEADER_PADDING_HORIZONTAL, headerSize)
+            pageContent.elements.forEach(::drawElement)
+        }.dispose()
+    }
 }
