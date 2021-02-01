@@ -1,4 +1,4 @@
-package com.github.badoualy.mobileflow.annotator
+package com.github.badoualy.mobile.annotator
 
 data class Flow(
     val flowName: String,

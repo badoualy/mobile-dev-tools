@@ -1,4 +1,4 @@
-package com.github.badoualy.mobileflow.annotator
+package com.github.badoualy.mobile.stitcher
 
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.pixels.Pixel

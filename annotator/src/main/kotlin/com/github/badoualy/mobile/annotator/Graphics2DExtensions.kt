@@ -1,4 +1,4 @@
-package com.github.badoualy.mobileflow.annotator
+package com.github.badoualy.mobile.annotator
 
 import java.awt.Color
 import java.awt.Graphics2D

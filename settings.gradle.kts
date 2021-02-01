@@ -1,4 +1,4 @@
-rootProject.name = "mobile-flow-doc"
+rootProject.name = "mobile-dev-tools"
 
 include(":annotator")
 include(":stitcher")

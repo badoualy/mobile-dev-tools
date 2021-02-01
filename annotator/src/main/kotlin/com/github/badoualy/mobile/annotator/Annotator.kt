@@ -1,5 +1,6 @@
-package com.github.badoualy.mobileflow.annotator
+package com.github.badoualy.mobile.annotator
 
+import com.github.badoualy.mobile.stitcher.getStitchedImage
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.Position
 import com.sksamuel.scrimage.nio.PngWriter
