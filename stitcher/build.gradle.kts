@@ -8,6 +8,11 @@ repositories {
     jcenter()
 }
 
+task("runStitcher", JavaExec::class) {
+    main = "com.github.badoualy.mobile.stitcher.StitcherKt"
+    classpath = sourceSets["main"].runtimeClasspath
+}
+
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("com.sksamuel.scrimage:scrimage-core:4.0.15")

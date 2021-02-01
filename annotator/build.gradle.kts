@@ -9,7 +9,7 @@ repositories {
 }
 
 task("runAnnotator", JavaExec::class) {
-    main = "com.github.badoualy.mobileflow.annotator.AnnotatorKt"
+    main = "com.github.badoualy.mobile.annotator.AnnotatorKt"
     classpath = sourceSets["main"].runtimeClasspath
 }
 

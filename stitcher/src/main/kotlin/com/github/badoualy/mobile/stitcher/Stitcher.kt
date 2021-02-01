@@ -1,8 +1,25 @@
 package com.github.badoualy.mobile.stitcher
 
 import com.sksamuel.scrimage.ImmutableImage
+import com.sksamuel.scrimage.nio.PngWriter
 import com.sksamuel.scrimage.pixels.Pixel
 import java.io.File
+
+fun main(args: Array<String>) {
+    check(args.isNotEmpty()) { "Missing input directory" }
+
+    val inputDir = File(args[0])
+    val resultFile = File(inputDir, "result.png").apply { if (exists()) delete() }
+
+    println("Looking for files in ${inputDir.absolutePath}")
+    val files = inputDir.listFiles { file: File ->
+        file.extension.toLowerCase() in arrayOf("jpg", "png", "jpeg")
+    }?.toList()?.sortedBy { it.nameWithoutExtension }
+    println("Stitching files ${files.orEmpty().joinToString { it.name }}")
+
+    files?.getStitchedImage(startY = args.getOrNull(1)?.toInt() ?: 0, endY = args.getOrNull(2)?.toInt() ?: 0)
+        ?.output(PngWriter.MaxCompression, resultFile)
+}
 
 fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage {
     val chunks = map { ImmutableImage.loader().fromFile(it) }.map { Chunk(it) }
@@ -18,6 +35,7 @@ fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE):
                 dropLast = (chunk.image.height - endY).coerceAtLeast(0)
             )
         )
+        println("Match $result")
 
         previousChunk.bounds.bottom = result.first
         chunk.bounds.top = result.second
@@ -50,15 +68,20 @@ private fun findFirstRowMatch(
     dropFirst: Int = 0,
     dropLast: Int = 0
 ): Pair<Int, Int>? {
-    // Take first non empty line and look for it in img1
-    val img2FirstRow = img2.rows().drop(dropFirst).firstOrNull { it.distinctBy(Pixel::argb).size > 1 } ?: return null
+    img2.rows().drop(dropFirst)
+        .filter { it.distinctBy(Pixel::argb).size > 1 }
+        .forEach { img2Row ->
+            val match = img1.rows()
+                .dropLast(dropLast) // Ignore what's outside of the scrolling view
+                .reversed() // Start from bottom to find the match faster
+                .filter { it[0].y != img2Row[0].y } // Ignore identical row, probably not in the scrolling view's bounds
+                .firstOrNull { it.isIdentical(img2Row) }
+            if (match != null) {
+                return match[0].y to img2Row[0].y
+            }
+        }
 
-    val match = img1.rows().dropLast(dropLast).reversed().firstOrNull { it.isIdentical(img2FirstRow) }
-    return if (match != null) {
-        match[0].y to img2FirstRow[0].y
-    } else {
-        null
-    }
+    return null
 }
 
 private fun Array<out Pixel>.isIdentical(a: Array<out Pixel>): Boolean = all { it.argb == a[it.x].argb }

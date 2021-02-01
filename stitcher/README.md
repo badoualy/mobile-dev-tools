@@ -33,6 +33,10 @@ dependencies {
 
 ### Usage
 
+`./gradlew runStitcher --args="<path_to_dir> startY endY"`
+
+The result will be exported into `result.png`
+
 Use the following function
 
 `fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage`
@@ -42,4 +46,5 @@ Where
 * `startY` scrolling view top position
 * `endY` scrolling view bottom position
 
-Those values are optional and serve as optimisation to avoid checking unnecessary parts of the images
+Those values are optional and serve as optimisation to avoid checking unnecessary parts of the images. However, it is
+strongly recommended specifying them, or the algorithm might find a false positive outside the scrolling view. 
