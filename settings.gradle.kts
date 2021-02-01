@@ -1,3 +1,4 @@
 rootProject.name = "mobile-flow-doc"
 
-include(":main")
+include(":annotator")
+include(":stitcher")

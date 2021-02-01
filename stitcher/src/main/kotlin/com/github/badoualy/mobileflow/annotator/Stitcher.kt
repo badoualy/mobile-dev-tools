@@ -1,26 +1,8 @@
 package com.github.badoualy.mobileflow.annotator
 
 import com.sksamuel.scrimage.ImmutableImage
-import com.sksamuel.scrimage.nio.PngWriter
 import com.sksamuel.scrimage.pixels.Pixel
 import java.io.File
-import kotlin.system.measureTimeMillis
-
-fun main() {
-    val file1 = File("./main/resources/test01.png")
-    val file2 = File("./main/resources/test02.png")
-    val file3 = File("./main/resources/test03.png")
-    val dst = File("./main/resources/result.png").apply { if (exists()) delete() }
-
-    val scrollableViewTop = 56 * 5
-    val scrollableViewBottom = 2870
-    val duration = measureTimeMillis {
-        listOf(file1, file2, file3)
-            .getStitchedImage(startY = scrollableViewTop, endY = scrollableViewBottom)
-            .output(PngWriter.MaxCompression, dst)
-    }
-    println("Stitched in $duration")
-}
 
 fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE): ImmutableImage {
     val chunks = map { ImmutableImage.loader().fromFile(it) }.map { Chunk(it) }

@@ -9,10 +9,8 @@ task("runAnnotator", JavaExec::class) {
     classpath = sourceSets["main"].runtimeClasspath
 }
 
-group = "com.github.badoualy"
-version = "1.0.0"
-
 dependencies {
+    implementation(project(":stitcher"))
     implementation("com.squareup.moshi:moshi:1.11.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.11.0")
     implementation("com.sksamuel.scrimage:scrimage-core:4.0.15")
