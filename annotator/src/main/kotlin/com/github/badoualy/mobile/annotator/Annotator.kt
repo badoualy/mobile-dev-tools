@@ -1,6 +1,5 @@
 package com.github.badoualy.mobile.annotator
 
-import com.github.badoualy.mobile.stitcher.getStitchedImage
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.Position
 import com.sksamuel.scrimage.nio.PngWriter
@@ -45,18 +44,11 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
     val flow = moshi.adapter(Flow::class.java).fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
     println("Starting flow ${flow.flowName}")
     flow.steps.forEach { pageContent ->
-        println("Doing ${pageContent.files.joinToString()}")
-        check(pageContent.files.isNotEmpty()) { "Missing screenshot files" }
-        val screenshotFiles = pageContent.files.map { File(flowDir, it) }
-        val screenshotImage = if (screenshotFiles.size > 1) {
-            // TODO: get scrollable view info
-            println("Stitching files")
-            screenshotFiles.getStitchedImage()
-        } else {
-            ImmutableImage.loader().fromFile(screenshotFiles.first())
-        }
+        println(pageContent.file)
+        val screenshotFile = File(flowDir, pageContent.file)
+        val screenshotImage = ImmutableImage.loader().fromFile(screenshotFile)
 
-        val annotatedFile = File(annotatedDir, "annotated_${screenshotFiles.first().name}")
+        val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
         screenshotImage.annotate(pageContent)
             .output(PngWriter.MaxCompression, annotatedFile)
     }

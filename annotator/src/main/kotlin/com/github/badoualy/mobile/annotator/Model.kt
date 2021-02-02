@@ -6,7 +6,7 @@ data class Flow(
 )
 
 data class PageContent(
-    val files: List<String>,
+    val file: String,
     val id: String,
     val deeplink: String,
     val fragmentName: String,
