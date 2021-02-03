@@ -65,7 +65,6 @@ private fun List<Chunk>.buildStitchedImage(): StitchedImage {
         .apply {
             awt().createGraphics().apply {
                 fold(0) { y, chunk ->
-                    println("Chunk ${chunk.region}")
                     drawImage(
                         chunk.image.awt(),
 

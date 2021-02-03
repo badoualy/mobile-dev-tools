@@ -9,6 +9,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okio.Okio
 import java.awt.Rectangle
 import java.io.File
+import kotlin.system.measureTimeMillis
 
 private const val RESULT_DIR = "annotated"
 
@@ -27,11 +28,14 @@ fun main(args: Array<String>) {
     }
     println("Looking in ${dir.absolutePath}")
 
-    dir.listFiles { file: File -> file.isDirectory }
-        .orEmpty()
-        .forEach(::generateFlowAnnotatedScreenshots)
+    val duration = measureTimeMillis {
+        dir.listFiles { file: File -> file.isDirectory }
+            .orEmpty().toList()
+            .parallelStream()
+            .forEach(::generateFlowAnnotatedScreenshots)
+    }
 
-    println("Done")
+    println("Done in $duration")
 }
 
 private fun generateFlowAnnotatedScreenshots(flowDir: File) {
