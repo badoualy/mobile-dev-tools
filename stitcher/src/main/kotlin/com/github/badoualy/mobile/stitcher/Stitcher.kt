@@ -5,6 +5,7 @@ import com.sksamuel.scrimage.nio.PngWriter
 import com.sksamuel.scrimage.pixels.Pixel
 import java.awt.Color
 import java.io.File
+import kotlin.streams.toList
 
 var DEBUG = false
 private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORANGE, Color.CYAN)
@@ -33,33 +34,37 @@ fun List<File>.getStitchedImage(
     endY: Int = Integer.MAX_VALUE,
     threshold: Int = 1
 ): StitchedImage {
-    val chunks = map { ImmutableImage.loader().fromFile(it) }.map { Chunk(it) }
+    val images = map { ImmutableImage.loader().fromFile(it) }
+    val list = images.indices.take(images.size - 1).map { images[it] to images[it + 1] }
 
-    // Evaluate chunk bounds
-    chunks.reduce { previousChunk, chunk ->
-        check(previousChunk.image.width == chunk.image.width) { "Images must have the same width" }
-        val result = checkNotNull(
-            findFirstRowMatch(
-                img1 = previousChunk.image,
-                img2 = chunk.image,
-                dropFirst = startY.coerceAtMost(chunk.image.height),
-                dropLast = (chunk.image.height - endY).coerceAtLeast(0),
-                threshold = threshold
+    val resultList = list.parallelStream()
+        .map { (img1, img2) ->
+            check(img1.width == img2.width) { "Images must have the same width" }
+            checkNotNull(
+                findFirstRowMatch(
+                    img1 = img1,
+                    img2 = img2,
+                    dropFirst = startY.coerceAtMost(img2.height),
+                    dropLast = (img1.height - endY).coerceAtLeast(0),
+                    threshold = threshold
+                )
             )
-        )
-        println("Match $result")
+        }
+        .toList()
 
-        previousChunk.region.bottom = result.first
-        chunk.region.top = result.second
-        chunk
+    val chunks = resultList.runningFold(Chunk(resultList[0].img1)) { previousChunk, result ->
+        previousChunk.region.bottom = result.y1
+        Chunk(result.img2).apply { region.top = result.y2 }
     }
 
-    // Build image
-    val firstChunk = chunks.first()
-    val stitchedImage = ImmutableImage.create(firstChunk.image.width, chunks.sumBy { it.height })
+    return chunks.buildStitchedImage()
+}
+
+private fun List<Chunk>.buildStitchedImage(): StitchedImage {
+    val stitchedImage = ImmutableImage.create(first().image.width, sumBy { it.height })
         .apply {
             awt().createGraphics().apply {
-                chunks.fold(0) { y, chunk ->
+                fold(0) { y, chunk ->
                     println("Chunk ${chunk.region}")
                     drawImage(
                         chunk.image.awt(),
@@ -74,7 +79,7 @@ fun List<File>.getStitchedImage(
                 }
 
                 if (DEBUG) {
-                    chunks.foldIndexed(0) { i, y, chunk ->
+                    foldIndexed(0) { i, y, chunk ->
                         color = DEBUG_COLORS[i % DEBUG_COLORS.size]
                         drawRect(0, y, width, chunk.height - 1)
                         y + chunk.height
@@ -83,7 +88,7 @@ fun List<File>.getStitchedImage(
             }.dispose()
         }
 
-    return StitchedImage(stitchedImage, chunks)
+    return StitchedImage(stitchedImage, this)
 }
 
 private fun findFirstRowMatch(
@@ -92,7 +97,7 @@ private fun findFirstRowMatch(
     dropFirst: Int,
     dropLast: Int,
     threshold: Int
-): Pair<Int, Int>? {
+): MatchResult? {
     img2.rows().drop(dropFirst)
         .filter { it.distinctBy(Pixel::argb).size > 1 }
         .forEach { img2Row ->
@@ -102,7 +107,7 @@ private fun findFirstRowMatch(
                 .filter { it[0].y != img2Row[0].y } // Ignore identical row, probably not in the scrolling view's bounds
                 .firstOrNull { it.isIdentical(img2Row) }
             if (match != null && areRowsIdentical(img1, img2, match[0].y, img2Row[0].y, threshold = threshold)) {
-                return match[0].y to img2Row[0].y
+                return MatchResult(img1, img2, match[0].y, img2Row[0].y)
             }
         }
 
@@ -120,3 +125,5 @@ private fun areRowsIdentical(
 }
 
 private fun Array<out Pixel>.isIdentical(a: Array<out Pixel>): Boolean = all { it.argb == a[it.x].argb }
+
+private data class MatchResult(val img1: ImmutableImage, val img2: ImmutableImage, val y1: Int, val y2: Int)
