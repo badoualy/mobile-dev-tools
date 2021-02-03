@@ -142,4 +142,4 @@ The result will be exported in a `annotated` directory:
 
 | Original                                                                                        | Annotated                                                                                                |
 |---------------------------------------------------------------------------------------------	|-------------------------------------------------------------------------------------------------------	|
-| <img src="https://github.com/badoualy/mobile-tools-dev/blob/main/ART/step1.png" width="300">    | <img src="https://github.com/badoualy/mobile-tools-dev/blob/main/ART/annotated_step1.png" width="300">    |
+| <img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/step1.png" width="300">    | <img src="https://github.com/badoualy/mobile-dev-tools/blob/main/ART/annotated_step1.png" width="300">    |
