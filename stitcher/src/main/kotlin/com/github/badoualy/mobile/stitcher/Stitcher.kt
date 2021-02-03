@@ -3,7 +3,11 @@ package com.github.badoualy.mobile.stitcher
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.nio.PngWriter
 import com.sksamuel.scrimage.pixels.Pixel
+import java.awt.Color
 import java.io.File
+
+var DEBUG = false
+private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORANGE, Color.CYAN)
 
 fun main(args: Array<String>) {
     check(args.isNotEmpty()) { "Missing input directory" }
@@ -21,14 +25,14 @@ fun main(args: Array<String>) {
         startY = args.getOrNull(1)?.toInt() ?: 0,
         endY = args.getOrNull(2)?.toInt() ?: 0,
         threshold = args.getOrNull(3)?.toInt() ?: 0
-    )?.output(PngWriter.MaxCompression, resultFile)
+    )?.image?.output(PngWriter.MaxCompression, resultFile)
 }
 
 fun List<File>.getStitchedImage(
     startY: Int = 0,
     endY: Int = Integer.MAX_VALUE,
     threshold: Int = 1
-): ImmutableImage {
+): StitchedImage {
     val chunks = map { ImmutableImage.loader().fromFile(it) }.map { Chunk(it) }
 
     // Evaluate chunk bounds
@@ -45,29 +49,41 @@ fun List<File>.getStitchedImage(
         )
         println("Match $result")
 
-        previousChunk.bounds.bottom = result.first
-        chunk.bounds.top = result.second
+        previousChunk.region.bottom = result.first
+        chunk.region.top = result.second
         chunk
     }
 
     // Build image
     val firstChunk = chunks.first()
-    return ImmutableImage.create(firstChunk.image.width, chunks.sumBy { it.height })
+    val stitchedImage = ImmutableImage.create(firstChunk.image.width, chunks.sumBy { it.height })
         .apply {
             awt().createGraphics().apply {
                 chunks.fold(0) { y, chunk ->
+                    println("Chunk ${chunk.region}")
                     drawImage(
                         chunk.image.awt(),
 
                         0, y, width, y + chunk.height,
-                        0, chunk.bounds.top, width, chunk.bounds.bottom,
+                        0, chunk.region.top, width, chunk.region.bottom,
 
                         null
                     )
+
                     y + chunk.height
+                }
+
+                if (DEBUG) {
+                    chunks.foldIndexed(0) { i, y, chunk ->
+                        color = DEBUG_COLORS[i % DEBUG_COLORS.size]
+                        drawRect(0, y, width, chunk.height - 1)
+                        y + chunk.height
+                    }
                 }
             }.dispose()
         }
+
+    return StitchedImage(stitchedImage, chunks)
 }
 
 private fun findFirstRowMatch(
@@ -104,12 +120,3 @@ private fun areRowsIdentical(
 }
 
 private fun Array<out Pixel>.isIdentical(a: Array<out Pixel>): Boolean = all { it.argb == a[it.x].argb }
-
-private data class Chunk(
-    val image: ImmutableImage,
-    val bounds: Bounds = Bounds(left = 0, top = 0, right = image.width, bottom = image.height)
-) {
-    val height get() = bounds.bottom - bounds.top
-}
-
-private data class Bounds(var left: Int = 0, var top: Int = 0, var right: Int = 0, var bottom: Int = 0)

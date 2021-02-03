@@ -8,10 +8,12 @@ data class Flow(
 data class PageContent(
     val file: String,
     val id: String,
+    val uuid: String,
     val deeplink: String,
     val fragmentName: String,
     val controllerName: String,
     val jsFileName: String,
+    val scrollableElement: String? = null,
     val elements: List<PageElement>
 ) {
     val headers: List<String> get() = listOf(id, deeplink, fragmentName, controllerName, jsFileName)
