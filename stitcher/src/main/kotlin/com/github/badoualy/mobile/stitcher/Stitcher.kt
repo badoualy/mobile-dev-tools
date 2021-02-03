@@ -34,10 +34,9 @@ fun List<File>.getStitchedImage(
     endY: Int = Integer.MAX_VALUE,
     threshold: Int = 1
 ): StitchedImage {
-    val images = map { ImmutableImage.loader().fromFile(it) }
-    val list = images.indices.take(images.size - 1).map { images[it] to images[it + 1] }
-
-    val resultList = list.parallelStream()
+    return map { ImmutableImage.loader().fromFile(it) }
+        .zipWithNext()
+        .parallelStream()
         .map { (img1, img2) ->
             check(img1.width == img2.width) { "Images must have the same width" }
             checkNotNull(
@@ -51,13 +50,14 @@ fun List<File>.getStitchedImage(
             )
         }
         .toList()
-
-    val chunks = resultList.runningFold(Chunk(resultList[0].img1)) { previousChunk, result ->
-        previousChunk.region.bottom = result.y1
-        Chunk(result.img2).apply { region.top = result.y2 }
-    }
-
-    return chunks.buildStitchedImage()
+        .run {
+            // Build ChunkList with region of each picture
+            runningFold(Chunk(first().img1)) { previousChunk, result ->
+                previousChunk.region.bottom = result.y1
+                Chunk(result.img2).apply { region.top = result.y2 }
+            }
+        }
+        .buildStitchedImage()
 }
 
 private fun List<Chunk>.buildStitchedImage(): StitchedImage {
