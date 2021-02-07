@@ -1,11 +1,14 @@
 package com.github.badoualy.mobile.annotator
 
 import com.github.badoualy.mobile.stitcher.getStitchedImage
+import com.github.badoualy.mobile.stitcher.utils.pforEach
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.Position
 import com.sksamuel.scrimage.nio.PngWriter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import okio.Okio
 import java.awt.Rectangle
 import java.io.File
@@ -16,6 +19,8 @@ private const val RESULT_DIR = "annotated"
 private val moshi = Moshi.Builder()
     .addLast(KotlinJsonAdapterFactory())
     .build()
+
+private val flowAdapter = moshi.adapter(Flow::class.java)
 
 fun main(args: Array<String>) {
     val dir = if (args.isEmpty()) {
@@ -29,16 +34,17 @@ fun main(args: Array<String>) {
     println("Looking in ${dir.absolutePath}")
 
     val duration = measureTimeMillis {
-        dir.listFiles { file: File -> file.isDirectory }
-            .orEmpty().toList()
-            .parallelStream()
-            .forEach(::generateFlowAnnotatedScreenshots)
+        runBlocking(Dispatchers.Default) {
+            dir.listFiles { file: File -> file.isDirectory }
+                .orEmpty().toList()
+                .pforEach(::generateFlowAnnotatedScreenshots)
+        }
     }
 
     println("Done in $duration")
 }
 
-private fun generateFlowAnnotatedScreenshots(flowDir: File) {
+private suspend fun generateFlowAnnotatedScreenshots(flowDir: File) {
     val jsonFile = flowDir.listFiles { file: File -> file.extension.toLowerCase() == "json" }?.firstOrNull()
     if (jsonFile == null) {
         println("Found no json in ${flowDir.name}, skipping")
@@ -47,7 +53,7 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
 
     val annotatedDir = File(flowDir, RESULT_DIR).apply { mkdir() }
 
-    val flow = moshi.adapter(Flow::class.java).fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
+    val flow = flowAdapter.fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
     println("Starting flow ${flow.flowName}")
 
     flow.steps
@@ -78,7 +84,7 @@ private fun generateFlowAnnotatedScreenshots(flowDir: File) {
     println("\n")
 }
 
-private fun List<PageContent>.getStitchedPageContent(flowDir: File): PageContent {
+private suspend fun List<PageContent>.getStitchedPageContent(flowDir: File): PageContent {
     val uuid = first().uuid
     println("Attempting to stitch $uuid: ${joinToString { it.file }}")
 
