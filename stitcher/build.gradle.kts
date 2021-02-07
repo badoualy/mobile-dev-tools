@@ -15,6 +15,8 @@ task("runStitcher", JavaExec::class) {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+
     implementation("com.sksamuel.scrimage:scrimage-core:4.0.15")
 }
 
