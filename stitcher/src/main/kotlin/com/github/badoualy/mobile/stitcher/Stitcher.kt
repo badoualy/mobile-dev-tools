@@ -7,7 +7,6 @@ import com.sksamuel.scrimage.nio.PngWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.yield
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
@@ -29,42 +28,44 @@ fun main(args: Array<String>) {
 
     val timeout = args.getOrNull(4)?.toLong() ?: 60_000L
     runBlocking(Dispatchers.Default) {
-        withTimeout(timeout) {
-            files?.getStitchedImage(
-                startY = args.getOrNull(1)?.toInt() ?: 0,
-                endY = args.getOrNull(2)?.toInt() ?: 0,
-                threshold = args.getOrNull(3)?.toInt() ?: 0
-            )?.image?.output(PngWriter.MaxCompression, resultFile)
-        }
+        files?.getStitchedImage(
+            startY = args.getOrNull(1)?.toInt() ?: 0,
+            endY = args.getOrNull(2)?.toInt() ?: 0,
+            threshold = args.getOrNull(3)?.toInt() ?: 0,
+            timeout = timeout
+        )?.image?.output(PngWriter.MaxCompression, resultFile)
     }
 }
 
 suspend fun List<File>.getStitchedImage(
     startY: Int = 0,
     endY: Int = Integer.MAX_VALUE,
-    threshold: Int = 1
+    threshold: Int = 1,
+    timeout: Long = 2 * 60 * 1000L
 ): StitchedImage {
-    return map { ImmutableImage.loader().fromFile(it) }
-        .zipWithNext()
-        .pmap { (img1, img2) ->
-            check(img1.width == img2.width) { "Images must have the same width" }
-            findFirstRowMatch(
-                img1 = img1,
-                img2 = img2,
-                dropFirst = startY.coerceAtMost(img2.height),
-                dropLast = (img1.height - endY).coerceAtLeast(0),
-                threshold = threshold
-            ).let { checkNotNull(it) }
-        }
-        .toList()
-        .run {
-            // Build ChunkList with region of each picture
-            runningFold(Chunk(first().img1)) { previousChunk, result ->
-                previousChunk.region.bottom = result.y1
-                Chunk(result.img2).apply { region.top = result.y2 }
+    return withTimeout(timeout) {
+        map { ImmutableImage.loader().fromFile(it) }
+            .zipWithNext()
+            .pmap { (img1, img2) ->
+                check(img1.width == img2.width) { "Images must have the same width" }
+                findFirstRowMatch(
+                    img1 = img1,
+                    img2 = img2,
+                    dropFirst = startY.coerceAtMost(img2.height),
+                    dropLast = (img1.height - endY).coerceAtLeast(0),
+                    threshold = threshold
+                ).let { checkNotNull(it) }
             }
-        }
-        .buildStitchedImage()
+            .toList()
+            .run {
+                // Build ChunkList with region of each picture
+                runningFold(Chunk(first().img1)) { previousChunk, result ->
+                    previousChunk.region.bottom = result.y1
+                    Chunk(result.img2).apply { region.top = result.y2 }
+                }
+            }
+            .buildStitchedImage()
+    }
 }
 
 private fun List<Chunk>.buildStitchedImage(): StitchedImage {
@@ -97,7 +98,7 @@ private fun List<Chunk>.buildStitchedImage(): StitchedImage {
     return StitchedImage(stitchedImage, this)
 }
 
-private suspend fun findFirstRowMatch(
+private fun findFirstRowMatch(
     img1: ImmutableImage,
     img2: ImmutableImage,
     dropFirst: Int,
@@ -122,12 +123,10 @@ private suspend fun findFirstRowMatch(
                 // .filter { y1 -> y1 != y2 } // Ignore identical row
                 .firstOrNull { y1 ->
                     areRowsIdentical(img1.awt(), img2.awt(), y1, y2, columnIndices, threshold = threshold)
-                        .also { yield() }
                 }
             if (y1Match != null) {
                 return MatchResult(img1, img2, y1Match, y2)
             }
-            yield()
         }
 
     return null
