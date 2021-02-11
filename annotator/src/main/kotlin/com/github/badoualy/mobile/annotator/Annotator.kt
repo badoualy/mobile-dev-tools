@@ -2,6 +2,7 @@ package com.github.badoualy.mobile.annotator
 
 import com.github.badoualy.mobile.stitcher.getStitchedImage
 import com.github.badoualy.mobile.stitcher.utils.pforEach
+import com.github.badoualy.mobile.stitcher.utils.pmap
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.Position
 import com.sksamuel.scrimage.nio.PngWriter
@@ -37,26 +38,30 @@ fun main(args: Array<String>) {
         runBlocking(Dispatchers.Default) {
             dir.listFiles { file: File -> file.isDirectory }
                 .orEmpty().toList()
-                .pforEach(::generateFlowAnnotatedScreenshots)
+                .pmap { flowDir -> flowDir to generateFlowAnnotatedScreenshots(flowDir) }
+                .pforEach { (flowDir, flowScreenshots) ->
+                    val pdfFile = File(flowDir, "flow.pdf")
+                    PdfHelper.generatePdf(pdfFile, flowScreenshots)
+                }
         }
     }
 
     println("Done in $duration")
 }
 
-private suspend fun generateFlowAnnotatedScreenshots(flowDir: File) {
+private suspend fun generateFlowAnnotatedScreenshots(flowDir: File): List<File> {
     val jsonFile = flowDir.listFiles { file: File -> file.extension.toLowerCase() == "json" }?.firstOrNull()
     if (jsonFile == null) {
         println("Found no json in ${flowDir.name}, skipping")
-        return
+        return emptyList()
     }
 
     val annotatedDir = File(flowDir, RESULT_DIR).apply { mkdir() }
 
-    val flow = flowAdapter.fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return
+    val flow = flowAdapter.fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return emptyList()
     println("Starting flow ${flow.flowName}")
 
-    flow.steps
+    return flow.steps
         .groupBy { it.uuid }.values
         .flatMap { pageContentList ->
             if (pageContentList.size > 1) {
@@ -71,7 +76,7 @@ private suspend fun generateFlowAnnotatedScreenshots(flowDir: File) {
             // Default behavior in case of failure or single item
             pageContentList
         }
-        .forEach { pageContent ->
+        .map { pageContent ->
             println("${pageContent.id}, ${pageContent.uuid}, ${pageContent.file}")
             val screenshotFile = File(flowDir, pageContent.file)
             val screenshotImage = ImmutableImage.loader().fromFile(screenshotFile)
@@ -79,9 +84,9 @@ private suspend fun generateFlowAnnotatedScreenshots(flowDir: File) {
             val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
             screenshotImage.annotate(pageContent)
                 .output(PngWriter.MaxCompression, annotatedFile)
-        }
 
-    println("\n")
+            annotatedFile
+        }
 }
 
 private suspend fun List<PageContent>.getStitchedPageContent(flowDir: File): PageContent {

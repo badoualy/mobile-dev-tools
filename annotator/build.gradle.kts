@@ -25,6 +25,8 @@ dependencies {
     implementation("com.sksamuel.scrimage:scrimage-core:4.0.15")
     implementation("com.sksamuel.scrimage:scrimage-filters:4.0.15")
     implementation("com.sksamuel.scrimage:scrimage-formats-extra:4.0.15")
+
+    implementation("org.apache.pdfbox:pdfbox:2.0.22")
 }
 
 tasks.withType<KotlinCompile>() {
