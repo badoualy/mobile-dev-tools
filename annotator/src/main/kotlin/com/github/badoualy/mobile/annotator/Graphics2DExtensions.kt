@@ -52,4 +52,3 @@ fun Graphics2D.drawStringCenteredHorizontally(text: String, y: Int, imageBounds:
         y
     )
 }
-

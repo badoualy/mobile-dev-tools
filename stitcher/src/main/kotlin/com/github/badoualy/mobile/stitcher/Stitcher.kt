@@ -5,11 +5,13 @@ import com.github.badoualy.mobile.stitcher.utils.pmap
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.nio.PngWriter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
+import kotlin.system.measureTimeMillis
 
 var DEBUG = false
 private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORANGE, Color.CYAN)
@@ -17,27 +19,30 @@ private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORA
 private data class Config(
     val input: File = File("."),
     val bounds: Pair<Int, Int> = 0 to Integer.MAX_VALUE,
+    val threshold: Int = 50,
     val timeout: Long = 60_000L,
-    val threshold: Int = 1,
     val debug: Boolean = false
 )
 
 /**
- * Usage: `./gradlew runAnnotator --args="<options>"`
+ * Usage: `./gradlew runStitcher --args="<options>"`
  *
  * options:
  * - `--input <dir>` input directory
  * - `--bounds y1:y2` range of rows (Y values) that defines the area to look in
- * - `--threshold <value>` how many successive row should be identical to be considered a match (default: 1)
+ * - `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
  * - `--timeout <value>` timeout before aborting merge
  * - `--debug true|false` will draw bounds of each chunk in a different color on the result (default: false)
  */
 fun main(args: Array<String>) {
     val config = getConfig(args)
     println("config $config")
+    println("Looking in ${config.input.absolutePath}")
 
     val inputDir = config.input
     DEBUG = config.debug
+
+    val resultFile = File(inputDir, "result.png").apply { if (exists()) delete() }
 
     println("Looking for files in ${inputDir.absolutePath}")
     val files = inputDir.listFiles { file: File ->
@@ -45,21 +50,33 @@ fun main(args: Array<String>) {
     }?.toList()?.sortedBy { it.nameWithoutExtension }
     println("Stitching files ${files.orEmpty().joinToString { it.name }}")
 
-    val resultFile = File(inputDir, "result.png").apply { if (exists()) delete() }
-    runBlocking(Dispatchers.Default) {
-        files?.getStitchedImage(
-            startY = config.bounds.first,
-            endY = config.bounds.second,
-            threshold = config.threshold,
-            timeout = config.timeout
-        )?.image?.output(PngWriter.MaxCompression, resultFile)
+    val duration = measureTimeMillis {
+        try {
+            runBlocking(Dispatchers.Default) {
+                files?.getStitchedImage(
+                    startY = config.bounds.first,
+                    endY = config.bounds.second,
+                    threshold = config.threshold,
+                    timeout = config.timeout
+                )?.image?.output(PngWriter.MaxCompression, resultFile)
+            }
+        } catch (e: TimeoutCancellationException) {
+            System.err.println("Stitching timed out: ${e.message}")
+        }
     }
+    println("Stitched in $duration ms")
 }
 
 private fun getConfig(args: Array<String>): Config {
     return args.toList().zipWithNext().fold(Config()) { config, (option, value) ->
         when (option) {
-            "--input" -> config.copy(input = File(value))
+            "--input" -> {
+                config.copy(
+                    input = File(value).also {
+                        check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.absolutePath}" }
+                    }
+                )
+            }
             "--bounds" -> config.copy(bounds = value.split(':').run { get(0).toInt() to get(1).toInt() })
             "--threshold" -> config.copy(threshold = value.toInt())
             "--timeout" -> config.copy(timeout = value.toLong())

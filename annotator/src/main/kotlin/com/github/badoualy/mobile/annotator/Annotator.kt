@@ -1,6 +1,5 @@
 package com.github.badoualy.mobile.annotator
 
-import com.github.badoualy.mobile.stitcher.getStitchedImage
 import com.github.badoualy.mobile.stitcher.utils.pforEach
 import com.github.badoualy.mobile.stitcher.utils.pmap
 import com.sksamuel.scrimage.ImmutableImage
@@ -23,22 +22,33 @@ private val moshi = Moshi.Builder()
 
 private val flowAdapter = moshi.adapter(Flow::class.java)
 
-fun main(args: Array<String>) {
-    val dir = if (args.isEmpty()) {
-        println("Missing args, using resources")
-        File("./src/main/resources/")
-    } else {
-        File(args.first()).also {
-            check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.absolutePath}" }
-        }
-    }
-    println("Looking in ${dir.absolutePath}")
+internal data class Config(
+    val input: File = File("."),
+    val filter: File? = null,
+    val threshold: Int = 50,
+    val timeout: Long = 60_000L
+)
 
+/**
+ * Usage: `./gradlew runAnnotator --args="<options>"`
+ *
+ * options:
+ * - `--input <dir>` input directory
+ * - `--filter <file>` filter file, each line is an element id that will be filtered out of the result
+ * - `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
+ * - `--timeout <value>` timeout before aborting merge
+ */
+fun main(args: Array<String>) {
+    val config = getConfig(args)
+    println("config $config")
+
+    val inputDir = config.input
+    println("Looking in ${inputDir.absolutePath}")
     val duration = measureTimeMillis {
         runBlocking(Dispatchers.Default) {
-            dir.listFiles { file: File -> file.isDirectory }
+            inputDir.listFiles { file: File -> file.isDirectory }
                 .orEmpty().toList()
-                .pmap { flowDir -> flowDir to generateFlowAnnotatedScreenshots(flowDir) }
+                .pmap { flowDir -> flowDir to generateFlowAnnotatedScreenshots(flowDir, config) }
                 .pforEach { (flowDir, flowScreenshots) ->
                     val pdfFile = File(flowDir, "flow.pdf")
                     PdfHelper.generatePdf(pdfFile, flowScreenshots)
@@ -49,14 +59,41 @@ fun main(args: Array<String>) {
     println("Done in $duration")
 }
 
-private suspend fun generateFlowAnnotatedScreenshots(flowDir: File): List<File> {
+private fun getConfig(args: Array<String>): Config {
+    return args.toList().zipWithNext().fold(Config()) { config, (option, value) ->
+        when (option) {
+            "--input" -> {
+                config.copy(
+                    input = File(value).also {
+                        check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.absolutePath}" }
+                    }
+                )
+            }
+            "--filter" -> {
+                config.copy(
+                    input = File(value).also {
+                        check(it.exists() && it.isFile) { "Supplied filter file doesn't exist or is not a file: ${it.absolutePath}" }
+                    }
+                )
+            }
+            "--threshold" -> config.copy(threshold = value.toInt())
+            "--timeout" -> config.copy(timeout = value.toLong())
+            else -> config
+        }
+    }
+}
+
+private suspend fun generateFlowAnnotatedScreenshots(flowDir: File, config: Config): List<File> {
     val jsonFile = flowDir.listFiles { file: File -> file.extension.toLowerCase() == "json" }?.firstOrNull()
     if (jsonFile == null) {
         println("Found no json in ${flowDir.name}, skipping")
         return emptyList()
     }
 
-    val annotatedDir = File(flowDir, RESULT_DIR).apply { mkdir() }
+    val annotatedDir = File(flowDir, RESULT_DIR).apply {
+        if (exists()) deleteRecursively()
+        mkdir()
+    }
 
     val flow = flowAdapter.fromJson(Okio.buffer(Okio.source(jsonFile))) ?: return emptyList()
     println("Starting flow ${flow.flowName}")
@@ -67,7 +104,7 @@ private suspend fun generateFlowAnnotatedScreenshots(flowDir: File): List<File> 
             if (pageContentList.size > 1) {
                 // Has multiple screenshots with same UUID, try to stitch
                 try {
-                    return@flatMap listOf(pageContentList.getStitchedPageContent(flowDir))
+                    return@flatMap listOf(pageContentList.getStitchedPageContent(flowDir, config))
                 } catch (e: Exception) {
                     println("Failed to stitch ${e.message}")
                 }
@@ -79,60 +116,14 @@ private suspend fun generateFlowAnnotatedScreenshots(flowDir: File): List<File> 
         .map { pageContent ->
             println("${pageContent.id}, ${pageContent.uuid}, ${pageContent.file}")
             val screenshotFile = File(flowDir, pageContent.file)
-            val screenshotImage = ImmutableImage.loader().fromFile(screenshotFile)
-
             val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
-            screenshotImage.annotate(pageContent)
+
+            ImmutableImage.loader().fromFile(screenshotFile)
+                .annotate(pageContent)
                 .output(PngWriter.MaxCompression, annotatedFile)
 
             annotatedFile
         }
-}
-
-private suspend fun List<PageContent>.getStitchedPageContent(flowDir: File): PageContent {
-    val uuid = first().uuid
-    println("Attempting to stitch $uuid: ${joinToString { it.file }}")
-
-    // Get scrollable element info
-    val scrollableElement = mapNotNull {
-        it.elements.firstOrNull { el -> el.id == it.scrollableElement }
-    }.firstOrNull()
-    check(all { it.scrollableElement.orEmpty().isNotBlank() }) { "Missing scrollableElement on some steps" }
-    checkNotNull(scrollableElement) { "scrollableElement ref not found in elements" }
-
-    // Stitch
-    val files = map { File(flowDir, it.file) }
-    val stitchedImage = files.getStitchedImage(
-        startY = scrollableElement.y,
-        endY = scrollableElement.run { y + height },
-        threshold = 50
-    )
-
-    // Write stitched image to a tmp file for debug and to put the path in returned PageContent
-    val stitchedFile = File(flowDir, "$uuid.png")
-    stitchedImage.image.output(PngWriter.MaxCompression, stitchedFile)
-
-    // Merge elements
-    check(stitchedImage.chunks.size == size) { "Chunks size (${stitchedImage.chunks.size} doesn't match original list size ($size)" }
-    var currentY = 0
-    val elements = stitchedImage.chunks.flatMapIndexed { i, chunk ->
-        get(i).elements
-            // Keep only element inside chunked rectangle
-            .filter { chunk.rectangle.contains(it.rectangle) }
-            .map {
-                it.copy(
-                    id = it.id,
-                    y = currentY + it.y - chunk.region.top
-                )
-            }
-            .also { currentY += chunk.height }
-    }
-
-    return first().copy(
-        file = stitchedFile.name,
-        id = uuid,
-        elements = elements
-    )
 }
 
 private fun ImmutableImage.annotate(pageContent: PageContent): ImmutableImage {
@@ -165,4 +156,3 @@ private fun ImmutableImage.annotate(pageContent: PageContent): ImmutableImage {
     }
 }
 
-private val PageElement.rectangle get() = Rectangle(x, y, width, height)

@@ -33,13 +33,13 @@ dependencies {
 
 ### Usage
 
-`./gradlew runAnnotator --args="<options>"`
+`./gradlew runStitcher --args="<options>"`
 
 options:
 
 - `--input <dir>` input directory
 - `--bounds y1:y2` range of rows (Y values) that defines the area to look in
-- `--threshold <value>` how many successive row should be identical to be considered a match (default: 1)
+- `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
 - `--timeout <value>` timeout before aborting merge
 - `--debug true|false` will draw bounds of each chunk in a different color on the result (default: false)
 

@@ -62,7 +62,9 @@ The json should be of the following format:
   "flowName": "onboarding",
   "steps": [
     {
-      "files": ["step1.png"],
+      "files": [
+        "step1.png"
+      ],
       "id": "screen.auth.home",
       "deeplink": "/auth",
       "fragmentName": "AuthHomeFragment",
@@ -107,7 +109,14 @@ The `files` attribute is a list of relative path, eg: `"files": ["./screenshots/
 
 ### Usage
 
-`./gradlew runAnnotator --args="<path_to_root>"`
+`./gradlew runAnnotator --args="<options>"`
+
+options:
+
+- `--input <dir>` input directory
+- `--filter <file>` filter file, each line is an element id that will be filtered out of the result
+- `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
+- `--timeout <value>` timeout before aborting merge
 
 ### Result
 
