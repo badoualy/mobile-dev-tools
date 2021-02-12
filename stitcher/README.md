@@ -38,8 +38,10 @@ dependencies {
 options:
 
 - `--input <dir>` input directory
-- `--timeout <value>` screenshot matching timeout value in ms (applied on a couple of images, not a global timeout)
-- `--debug true` will draw bounds of each chunk in a different color on the result
+- `--bounds y1:y2` range of rows (Y values) that defines the area to look in
+- `--threshold <value>` how many successive row should be identical to be considered a match (default: 1)
+- `--timeout <value>` timeout before aborting merge
+- `--debug true|false` will draw bounds of each chunk in a different color on the result (default: false)
 
 The result will be exported into `result.png`
 
@@ -59,7 +61,7 @@ Where
 * `startY` scrolling view top position
 * `endY` scrolling view bottom position
 * `threshold` number of successive lines that must match to consider a positive result
-* `timeout` screenshot matching timeout value in ms (applied on a couple of images, not a global timeout)
+* `timeout` timeout before aborting merge
 
 Those values are optional and serve as optimisation to avoid checking unnecessary parts of the images. However, it is
 strongly recommended specifying them, or the algorithm might find a false positive outside the scrolling view. 

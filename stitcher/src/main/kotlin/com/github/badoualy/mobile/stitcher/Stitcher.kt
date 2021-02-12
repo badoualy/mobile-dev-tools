@@ -16,7 +16,9 @@ private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORA
 
 private data class Config(
     val input: File = File("."),
+    val bounds: Pair<Int, Int> = 0 to Integer.MAX_VALUE,
     val timeout: Long = 60_000L,
+    val threshold: Int = 1,
     val debug: Boolean = false
 )
 
@@ -25,16 +27,17 @@ private data class Config(
  *
  * options:
  * - `--input <dir>` input directory
- * - `--timeout <value>` screenshot matching timeout value in ms (applied on a couple of images, not a global timeout)
- * - `--debug true` will draw bounds of each chunk in a different color on the result
+ * - `--bounds y1:y2` range of rows (Y values) that defines the area to look in
+ * - `--threshold <value>` how many successive row should be identical to be considered a match (default: 1)
+ * - `--timeout <value>` timeout before aborting merge
+ * - `--debug true|false` will draw bounds of each chunk in a different color on the result (default: false)
  */
 fun main(args: Array<String>) {
     val config = getConfig(args)
     println("config $config")
 
-    val (inputDir, timeout) = config
+    val inputDir = config.input
     DEBUG = config.debug
-    val resultFile = File(inputDir, "result.png").apply { if (exists()) delete() }
 
     println("Looking for files in ${inputDir.absolutePath}")
     val files = inputDir.listFiles { file: File ->
@@ -42,12 +45,13 @@ fun main(args: Array<String>) {
     }?.toList()?.sortedBy { it.nameWithoutExtension }
     println("Stitching files ${files.orEmpty().joinToString { it.name }}")
 
+    val resultFile = File(inputDir, "result.png").apply { if (exists()) delete() }
     runBlocking(Dispatchers.Default) {
         files?.getStitchedImage(
-            startY = args.getOrNull(1)?.toInt() ?: 0,
-            endY = args.getOrNull(2)?.toInt() ?: 0,
-            threshold = args.getOrNull(3)?.toInt() ?: 0,
-            timeout = timeout
+            startY = config.bounds.first,
+            endY = config.bounds.second,
+            threshold = config.threshold,
+            timeout = config.timeout
         )?.image?.output(PngWriter.MaxCompression, resultFile)
     }
 }
@@ -56,7 +60,10 @@ private fun getConfig(args: Array<String>): Config {
     return args.toList().zipWithNext().fold(Config()) { config, (option, value) ->
         when (option) {
             "--input" -> config.copy(input = File(value))
+            "--bounds" -> config.copy(bounds = value.split(':').run { get(0).toInt() to get(1).toInt() })
+            "--threshold" -> config.copy(threshold = value.toInt())
             "--timeout" -> config.copy(timeout = value.toLong())
+            "--debug" -> config.copy(debug = value.toBoolean())
             else -> config
         }
     }
