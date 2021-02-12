@@ -79,7 +79,10 @@ private suspend fun generateFlowDocument(
     val annotatedFiles = flow.stitchSteps(flowDir, config.stitcherConfig).steps.map { step ->
         println("${step.id}, ${step.uuid}, ${step.file}")
         annotator.generateAnnotatedFile(
-            pageContent = step.run { copy(elements = elements.filter { it.id !in filters }) },
+            pageContent = step.run {
+                // Keep elements not in filter and in selector if inSelectorsOnly is enabled
+                copy(elements = elements.filter { it.id !in filters && (it.inSelectors || !config.inSelectorsOnly) })
+            },
             screenshotFile = File(flowDir, step.file),
             dir = annotatedDir
         )
