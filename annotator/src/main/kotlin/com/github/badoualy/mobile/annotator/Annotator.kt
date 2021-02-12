@@ -1,5 +1,6 @@
 package com.github.badoualy.mobile.annotator
 
+import com.github.badoualy.mobile.stitcher.StitcherConfig
 import com.github.badoualy.mobile.stitcher.utils.pforEach
 import com.github.badoualy.mobile.stitcher.utils.pmap
 import com.sksamuel.scrimage.ImmutableImage
@@ -22,13 +23,6 @@ private val moshi = Moshi.Builder()
 
 private val flowAdapter = moshi.adapter(Flow::class.java)
 
-internal data class Config(
-    val input: File = File("."),
-    val filter: File? = null,
-    val threshold: Int = 50,
-    val timeout: Long = 60_000L
-)
-
 /**
  * Usage: `./gradlew runAnnotator --args="<options>"`
  *
@@ -39,17 +33,28 @@ internal data class Config(
  * - `--timeout <value>` timeout before aborting merge
  */
 fun main(args: Array<String>) {
-    val config = getConfig(args)
+    val config = AnnotatorConfig.parseArguments(args)
     println("config $config")
 
     val inputDir = config.input
     println("Looking in ${inputDir.absolutePath}")
+
+    val filters = config.filter?.readLines()?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }.orEmpty()
+    println("Filters ${filters.joinToString()}")
+
     val duration = measureTimeMillis {
         runBlocking(Dispatchers.Default) {
             inputDir.listFiles { file: File -> file.isDirectory }
                 .orEmpty().toList()
-                .pmap { flowDir -> flowDir to generateFlowAnnotatedScreenshots(flowDir, config) }
+                .pmap { flowDir ->
+                    flowDir to generateFlowAnnotatedScreenshots(
+                        flowDir = flowDir,
+                        filters = filters,
+                        stitcherConfig = config.stitcherConfig
+                    )
+                }
                 .pforEach { (flowDir, flowScreenshots) ->
+                    // Generate pdf file for each flow with one page per step
                     val pdfFile = File(flowDir, "flow.pdf")
                     PdfHelper.generatePdf(pdfFile, flowScreenshots)
                 }
@@ -59,31 +64,11 @@ fun main(args: Array<String>) {
     println("Done in $duration")
 }
 
-private fun getConfig(args: Array<String>): Config {
-    return args.toList().zipWithNext().fold(Config()) { config, (option, value) ->
-        when (option) {
-            "--input" -> {
-                config.copy(
-                    input = File(value).also {
-                        check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.absolutePath}" }
-                    }
-                )
-            }
-            "--filter" -> {
-                config.copy(
-                    input = File(value).also {
-                        check(it.exists() && it.isFile) { "Supplied filter file doesn't exist or is not a file: ${it.absolutePath}" }
-                    }
-                )
-            }
-            "--threshold" -> config.copy(threshold = value.toInt())
-            "--timeout" -> config.copy(timeout = value.toLong())
-            else -> config
-        }
-    }
-}
-
-private suspend fun generateFlowAnnotatedScreenshots(flowDir: File, config: Config): List<File> {
+private suspend fun generateFlowAnnotatedScreenshots(
+    flowDir: File,
+    filters: List<String>,
+    stitcherConfig: StitcherConfig
+): List<File> {
     val jsonFile = flowDir.listFiles { file: File -> file.extension.toLowerCase() == "json" }?.firstOrNull()
     if (jsonFile == null) {
         println("Found no json in ${flowDir.name}, skipping")
@@ -104,8 +89,9 @@ private suspend fun generateFlowAnnotatedScreenshots(flowDir: File, config: Conf
             if (pageContentList.size > 1) {
                 // Has multiple screenshots with same UUID, try to stitch
                 try {
-                    return@flatMap listOf(pageContentList.getStitchedPageContent(flowDir, config))
+                    return@flatMap listOf(pageContentList.getStitchedPageContent(flowDir, stitcherConfig))
                 } catch (e: Exception) {
+                    // TODO: should concat screenshots into 1 image
                     println("Failed to stitch ${e.message}")
                 }
             }
@@ -119,7 +105,7 @@ private suspend fun generateFlowAnnotatedScreenshots(flowDir: File, config: Conf
             val annotatedFile = File(annotatedDir, "annotated_${screenshotFile.name}")
 
             ImmutableImage.loader().fromFile(screenshotFile)
-                .annotate(pageContent)
+                .annotate(pageContent.run { copy(elements = elements.filter { it.id !in filters }) })
                 .output(PngWriter.MaxCompression, annotatedFile)
 
             annotatedFile

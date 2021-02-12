@@ -16,14 +16,6 @@ import kotlin.system.measureTimeMillis
 var DEBUG = false
 private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORANGE, Color.CYAN)
 
-private data class Config(
-    val input: File = File("."),
-    val bounds: Pair<Int, Int> = 0 to Integer.MAX_VALUE,
-    val threshold: Int = 50,
-    val timeout: Long = 60_000L,
-    val debug: Boolean = false
-)
-
 /**
  * Usage: `./gradlew runStitcher --args="<options>"`
  *
@@ -35,7 +27,7 @@ private data class Config(
  * - `--debug true|false` will draw bounds of each chunk in a different color on the result (default: false)
  */
 fun main(args: Array<String>) {
-    val config = getConfig(args)
+    val config = StitcherConfig.parseArguments(args)
     println("config $config")
     println("Looking in ${config.input.absolutePath}")
 
@@ -53,12 +45,9 @@ fun main(args: Array<String>) {
     val duration = measureTimeMillis {
         try {
             runBlocking(Dispatchers.Default) {
-                files?.getStitchedImage(
-                    startY = config.bounds.first,
-                    endY = config.bounds.second,
-                    threshold = config.threshold,
-                    timeout = config.timeout
-                )?.image?.output(PngWriter.MaxCompression, resultFile)
+                files?.getStitchedImage(config)
+                    ?.image
+                    ?.output(PngWriter.MaxCompression, resultFile)
             }
         } catch (e: TimeoutCancellationException) {
             System.err.println("Stitching timed out: ${e.message}")
@@ -67,23 +56,13 @@ fun main(args: Array<String>) {
     println("Stitched in $duration ms")
 }
 
-private fun getConfig(args: Array<String>): Config {
-    return args.toList().zipWithNext().fold(Config()) { config, (option, value) ->
-        when (option) {
-            "--input" -> {
-                config.copy(
-                    input = File(value).also {
-                        check(it.exists() && it.isDirectory) { "Supplied path doesn't exist or is not a dir: ${it.absolutePath}" }
-                    }
-                )
-            }
-            "--bounds" -> config.copy(bounds = value.split(':').run { get(0).toInt() to get(1).toInt() })
-            "--threshold" -> config.copy(threshold = value.toInt())
-            "--timeout" -> config.copy(timeout = value.toLong())
-            "--debug" -> config.copy(debug = value.toBoolean())
-            else -> config
-        }
-    }
+suspend fun List<File>.getStitchedImage(config: StitcherConfig): StitchedImage {
+    return getStitchedImage(
+        startY = config.bounds.first,
+        endY = config.bounds.second,
+        threshold = config.threshold,
+        timeout = config.timeout
+    )
 }
 
 suspend fun List<File>.getStitchedImage(

@@ -1,11 +1,12 @@
 package com.github.badoualy.mobile.annotator
 
+import com.github.badoualy.mobile.stitcher.StitcherConfig
 import com.github.badoualy.mobile.stitcher.getStitchedImage
 import com.sksamuel.scrimage.nio.PngWriter
 import java.awt.Rectangle
 import java.io.File
 
-internal suspend fun List<PageContent>.getStitchedPageContent(flowDir: File, config: Config): PageContent {
+internal suspend fun List<PageContent>.getStitchedPageContent(flowDir: File, config: StitcherConfig): PageContent {
     val uuid = first().uuid
     println("Attempting to stitch $uuid: ${joinToString { it.file }}")
 
@@ -21,7 +22,8 @@ internal suspend fun List<PageContent>.getStitchedPageContent(flowDir: File, con
     val stitchedImage = files.getStitchedImage(
         startY = scrollableElement.y,
         endY = scrollableElement.run { y + height },
-        threshold = config.threshold
+        threshold = config.threshold,
+        timeout = config.timeout
     )
 
     // Write stitched image to a tmp file for debug and to put the path in returned PageContent
