@@ -33,19 +33,33 @@ dependencies {
 
 ### Usage
 
-`./gradlew runStitcher --args="<path_to_dir> startY endY threshold"`
+`./gradlew runAnnotator --args="<options>"`
+
+options:
+
+- `--input <dir>` input directory
+- `--timeout <value>` screenshot matching timeout value in ms (applied on a couple of images, not a global timeout)
+- `--debug true` will draw bounds of each chunk in a different color on the result
 
 The result will be exported into `result.png`
 
 Use the following function
 
-`fun List<File>.getStitchedImage(startY: Int = 0, endY: Int = Integer.MAX_VALUE, threshold: Int = 0): ImmutableImage`
+```kotlin
+suspend fun List<File>.getStitchedImage(
+    startY: Int = 0,
+    endY: Int = Integer.MAX_VALUE,
+    threshold: Int = 1,
+    timeout: Long = 2 * 60 * 1000L
+): StitchedImage
+```
 
 Where
 
 * `startY` scrolling view top position
 * `endY` scrolling view bottom position
 * `threshold` number of successive lines that must match to consider a positive result
+* `timeout` screenshot matching timeout value in ms (applied on a couple of images, not a global timeout)
 
 Those values are optional and serve as optimisation to avoid checking unnecessary parts of the images. However, it is
 strongly recommended specifying them, or the algorithm might find a false positive outside the scrolling view. 

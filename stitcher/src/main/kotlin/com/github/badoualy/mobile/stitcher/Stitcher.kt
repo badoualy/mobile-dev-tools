@@ -14,10 +14,26 @@ import java.io.File
 var DEBUG = false
 private val DEBUG_COLORS = arrayOf(Color.RED, Color.BLUE, Color.GREEN, Color.ORANGE, Color.CYAN)
 
-fun main(args: Array<String>) {
-    check(args.isNotEmpty()) { "Missing input directory" }
+private data class Config(
+    val input: File = File("."),
+    val timeout: Long = 60_000L,
+    val debug: Boolean = false
+)
 
-    val inputDir = File(args[0])
+/**
+ * Usage: `./gradlew runAnnotator --args="<options>"`
+ *
+ * options:
+ * - `--input <dir>` input directory
+ * - `--timeout <value>` screenshot matching timeout value in ms (applied on a couple of images, not a global timeout)
+ * - `--debug true` will draw bounds of each chunk in a different color on the result
+ */
+fun main(args: Array<String>) {
+    val config = getConfig(args)
+    println("config $config")
+
+    val (inputDir, timeout) = config
+    DEBUG = config.debug
     val resultFile = File(inputDir, "result.png").apply { if (exists()) delete() }
 
     println("Looking for files in ${inputDir.absolutePath}")
@@ -26,7 +42,6 @@ fun main(args: Array<String>) {
     }?.toList()?.sortedBy { it.nameWithoutExtension }
     println("Stitching files ${files.orEmpty().joinToString { it.name }}")
 
-    val timeout = args.getOrNull(4)?.toLong() ?: 60_000L
     runBlocking(Dispatchers.Default) {
         files?.getStitchedImage(
             startY = args.getOrNull(1)?.toInt() ?: 0,
@@ -34,6 +49,16 @@ fun main(args: Array<String>) {
             threshold = args.getOrNull(3)?.toInt() ?: 0,
             timeout = timeout
         )?.image?.output(PngWriter.MaxCompression, resultFile)
+    }
+}
+
+private fun getConfig(args: Array<String>): Config {
+    return args.toList().zipWithNext().fold(Config()) { config, (option, value) ->
+        when (option) {
+            "--input" -> config.copy(input = File(value))
+            "--timeout" -> config.copy(timeout = value.toLong())
+            else -> config
+        }
     }
 }
 
