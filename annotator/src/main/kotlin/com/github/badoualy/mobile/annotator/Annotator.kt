@@ -76,16 +76,27 @@ private suspend fun generateFlowDocument(
     val annotator: Annotator = if (config.annotatePdf) PdfAnnotator() else ImageAnnotator()
     println("""Using ${if (config.annotatePdf) "Pdf" else "Image"}Annotator""")
 
-    val annotatedFiles = flow.stitchSteps(flowDir, config.stitcherConfig).steps.map { step ->
+    val stitchedFlow = flow.stitchSteps(flowDir, config.stitcherConfig)
+    val annotatedFiles = stitchedFlow.steps.map { step ->
         println("${step.id}, ${step.uuid}, ${step.file}")
         annotator.generateAnnotatedFile(
-            pageContent = step.run {
-                // Keep elements not in filter and in selector if inSelectorsOnly is enabled
-                copy(elements = elements.filter { it.id !in filters && (it.inSelectors || !config.inSelectorsOnly) })
-            },
+            pageContent = step.run { copy(elements = elements.filter { it.id !in filters }) },
             screenshotFile = File(flowDir, step.file),
             dir = annotatedDir
         )
+    }
+
+    if (config.inSelectorsFile) {
+        val annotatedInSelectorsFiles = stitchedFlow.steps.map { step ->
+            println("${step.id}, ${step.uuid}, ${step.file}")
+            annotator.generateAnnotatedFile(
+                pageContent = step.run { copy(elements = elements.filter { it.id !in filters && it.inSelectors }) },
+                screenshotFile = File(flowDir, step.file),
+                dir = annotatedDir
+            )
+        }
+
+        File(flowDir, "flow-with-selectors.pdf").also { annotator.generatePdfDocument(it, annotatedInSelectorsFiles) }
     }
 
     return File(flowDir, "flow.pdf").also { annotator.generatePdfDocument(it, annotatedFiles) }
