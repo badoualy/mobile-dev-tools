@@ -33,6 +33,7 @@ interface Annotator {
  * - `--annotatePdf true|false` if true, the annotations will be written as text on the pdf instead of on the image directly (default: false)
  * - `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
  * - `--timeout <value>` timeout before aborting merge
+ * - `--useAnnotateProperty true|false` if true, elements with the `annotate` property to false won't be annotated
  */
 fun main(args: Array<String>) {
     val config = AnnotatorConfig.parseArguments(args)
@@ -86,18 +87,21 @@ private suspend fun generateFlowDocument(
         )
     }
 
-    if (config.inSelectorsFile) {
+    val output = File(flowDir, "${flow.flowName}.pdf").also { annotator.generatePdfDocument(it, annotatedFiles) }
+
+    if (config.useAnnotateProperty) {
         val annotatedInSelectorsFiles = stitchedFlow.steps.map { step ->
             println("${step.id}, ${step.uuid}, ${step.file}")
             annotator.generateAnnotatedFile(
-                pageContent = step.run { copy(elements = elements.filter { it.id !in filters && it.inSelectors }) },
+                pageContent = step.run { copy(elements = elements.filter { it.id !in filters && it.annotate }) },
                 screenshotFile = File(flowDir, step.file),
                 dir = annotatedDir
             )
         }
 
-        File(flowDir, "flow-with-selectors.pdf").also { annotator.generatePdfDocument(it, annotatedInSelectorsFiles) }
+        File(flowDir, output.nameWithoutExtension + "__filtered.pdf")
+            .also { annotator.generatePdfDocument(it, annotatedInSelectorsFiles) }
     }
 
-    return File(flowDir, "flow.pdf").also { annotator.generatePdfDocument(it, annotatedFiles) }
+    return output
 }

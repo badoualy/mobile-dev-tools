@@ -4,7 +4,7 @@
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$" />
       <option name="externalSystemIdString" value="GRADLE" />
-      <option name="scriptParameters" value="runAnnotator --args=&quot;--input ./src/main/resources/ --filter ./src/main/resources/selector-filter.txt --inSelectorsFile true&quot;" />
+      <option name="scriptParameters" value="runAnnotator --args=&quot;--input ./src/main/resources/ --filter ./src/main/resources/selector-filter.txt --useAnnotateProperty true&quot;" />
       <option name="taskDescriptions">
         <list />
       </option>

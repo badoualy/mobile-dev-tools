@@ -21,7 +21,7 @@ data class PageContent(
 
 data class PageElement(
     val id: String,
-    val inSelectors: Boolean = false,
+    val annotate: Boolean = true,
     val x: Int,
     val y: Int,
     val width: Int,

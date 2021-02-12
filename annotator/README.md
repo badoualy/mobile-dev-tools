@@ -73,6 +73,7 @@ The json should be of the following format:
       "elements": [
         {
           "id": "bt_facebook",
+          "annotate": true,
           "x": 50,
           "y": 820,
           "width": 400,
@@ -80,6 +81,7 @@ The json should be of the following format:
         },
         {
           "id": "bt_google",
+          "annotate": false,
           "x": 50,
           "y": 1040,
           "width": 400,
@@ -115,10 +117,11 @@ options:
 
 - `--input <dir>` input directory
 - `--filter <file>` filter file, each line is an element id that will be filtered out of the result
-- `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
-- `--timeout <value>` timeout before aborting merge
 - `--annotatePdf true|false` if true, the annotations will be written as text on the pdf instead of on the image
   directly (default: false)
+- `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
+- `--timeout <value>` timeout before aborting merge
+- `--useAnnotateProperty true|false` if true, elements with the `annotate` property to false won't be annotated
 
 ### Result
 

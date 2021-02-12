@@ -7,7 +7,7 @@ data class AnnotatorConfig(
     val input: File = File("."),
     val filter: File? = null,
     val annotatePdf: Boolean = false,
-    val inSelectorsFile: Boolean = false,
+    val useAnnotateProperty: Boolean = false,
     val stitcherConfig: StitcherConfig = StitcherConfig()
 ) {
 
@@ -32,7 +32,7 @@ data class AnnotatorConfig(
                             )
                         }
                         "--annotatePdf" -> config.copy(annotatePdf = value.toBoolean())
-                        "--inSelectorsFile" -> config.copy(inSelectorsFile = value.toBoolean())
+                        "--useAnnotateProperty" -> config.copy(useAnnotateProperty = value.toBoolean())
                         else -> config
                     }
                 }
