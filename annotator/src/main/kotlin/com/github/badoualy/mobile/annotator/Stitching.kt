@@ -6,7 +6,28 @@ import com.sksamuel.scrimage.nio.PngWriter
 import java.awt.Rectangle
 import java.io.File
 
-internal suspend fun List<PageContent>.getStitchedPageContent(flowDir: File, config: StitcherConfig): PageContent {
+internal suspend fun Flow.stitchSteps(flowDir: File, config: StitcherConfig): Flow {
+    val steps = steps
+        .groupBy { it.uuid }.values
+        .flatMap { pageContentList ->
+            if (pageContentList.size > 1) {
+                // Has multiple screenshots with same UUID, try to stitch
+                try {
+                    return@flatMap listOf(pageContentList.getStitchedPageContent(flowDir, config))
+                } catch (e: Exception) {
+                    // TODO: should concat screenshots into 1 image
+                    println("Failed to stitch ${e.message}")
+                }
+            }
+
+            // Default behavior in case of failure or single item
+            pageContentList
+        }
+
+    return copy(steps = steps)
+}
+
+private suspend fun List<PageContent>.getStitchedPageContent(flowDir: File, config: StitcherConfig): PageContent {
     val uuid = first().uuid
     println("Attempting to stitch $uuid: ${joinToString { it.file }}")
 
@@ -53,5 +74,5 @@ internal suspend fun List<PageContent>.getStitchedPageContent(flowDir: File, con
     )
 }
 
-val PageElement.rectangle get() = Rectangle(x, y, width, height)
+private val PageElement.rectangle get() = Rectangle(x, y, width, height)
 

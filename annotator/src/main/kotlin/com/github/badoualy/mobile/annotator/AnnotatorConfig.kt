@@ -6,6 +6,8 @@ import java.io.File
 data class AnnotatorConfig(
     val input: File = File("."),
     val filter: File? = null,
+    val annotatePdf: Boolean = false,
+    val inSelectorsOnly: Boolean = false,
     val stitcherConfig: StitcherConfig = StitcherConfig()
 ) {
 
@@ -29,6 +31,8 @@ data class AnnotatorConfig(
                                 }
                             )
                         }
+                        "--annotatePdf" -> config.copy(annotatePdf = value.toBoolean())
+                        "--inSelectorsOnly" -> config.copy(inSelectorsOnly = value.toBoolean())
                         else -> config
                     }
                 }

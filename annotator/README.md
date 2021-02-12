@@ -117,6 +117,8 @@ options:
 - `--filter <file>` filter file, each line is an element id that will be filtered out of the result
 - `--threshold <value>` how many successive row should be identical to be considered a match (default: 50)
 - `--timeout <value>` timeout before aborting merge
+- `--annotatePdf true|false` if true, the annotations will be written as text on the pdf instead of on the image
+  directly (default: false)
 
 ### Result
 
